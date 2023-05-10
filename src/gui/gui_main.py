@@ -94,17 +94,17 @@ class TargetDetectionGUI(tk.Frame):
     #     self.load_button.grid(row=4, column=1, sticky='w')
 
     def create_widgets(self):
-        image = np.zeros((400, 400), dtype=np.uint8)
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-        image = Image.fromarray(image)
-        image = ImageTk.PhotoImage(image)
+        # image = np.zeros((400, 400), dtype=np.uint8)
+        # image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        # image = Image.fromarray(image)
+        # image = ImageTk.PhotoImage(image)
         self.canvas = DetectionCanvas(self.master, width=1500, height=600)  # Changed from self.master to self
         self.canvas.grid(row=0, column=0, rowspan=8)
         self.canvas.bind("<Button-1>", self.click_on_canvas)
         self.canvas.bind("<B1-Motion>", self.on_move_press)  # Bind mouse move event
         self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
         self.canvas.grid(row=0, column=0)
-        self.canvas.create_image(0, 0, anchor=NW, image=image)
+        # self.canvas.create_image(0, 0, anchor=NW, image=image)
         self.capture_button = ttk.Button(self, text="Capture", command=self.toggle_capture)  # Changed from self.master to self
         self.capture_button.grid(row=1, column=1, sticky='w')
         self.capturing = False
@@ -118,6 +118,11 @@ class TargetDetectionGUI(tk.Frame):
         warped_image = Image.fromarray(warped_image)
         warped_image = ImageTk.PhotoImage(warped_image)
         self.mapped_canvas.create_image(0, 0, anchor=NW, image=warped_image)
+        self.rect_vertices = np.array([[0, 0], [300, 0], [300, 200], [0, 200]],
+                                 dtype=np.float32)
+        for i in range(4):
+            self.mapped_canvas.create_line(self.rect_vertices[i - 1][0], self.rect_vertices[i - 1][1], self.rect_vertices[i][0],
+                                      self.rect_vertices[i][1], fill='blue')
         self.mode_combobox = ttk.Combobox(self, values=["High Performance", "Balanced", "Energy Saving"])  # Changed from self.master to self
         self.mode_combobox.grid(row=2, column=1, sticky='w')
 
@@ -191,6 +196,9 @@ class TargetDetectionGUI(tk.Frame):
 
         self.canvas.clear_detections()
         self.mapped_canvas.delete("all")
+        for i in range(4):
+            self.mapped_canvas.create_line(self.rect_vertices[i - 1][0], self.rect_vertices[i - 1][1], self.rect_vertices[i][0],
+                                      self.rect_vertices[i][1], fill='blue')
         if not self.capturing:
             return
 
