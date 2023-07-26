@@ -12,14 +12,14 @@ from yolov5.utils.dataloaders import LoadImages, LoadStreams
 import numpy as np
 import os
 
-os.environ['http_proxy'] = 'http://127.0.0.1:1080'
-os.environ['https_proxy'] = 'http://127.0.0.1:1080'
+os.environ['http_proxy'] = 'http://127.0.0.1:7890'
+os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 
 
 class YOLOv5:
-    def __init__(self, model_path="models/yolov5s-seg.pt"):
+    def __init__(self, model_path="models/yolov5m.pt"):
         # 设备配置
-        self.device = select_device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = select_device('cuda:0' if torch.cuda.is_available() else 'cpu')
         # 加载模型
         self.model = attempt_load(model_path, device=self.device)
         # # 加载模型
