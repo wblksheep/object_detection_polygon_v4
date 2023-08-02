@@ -17,9 +17,10 @@ os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 
 
 class YOLOv5:
-    def __init__(self, model_path="models/yolov5m.pt"):
+    def __init__(self, model_path="models/yolov5s.pt"):
         # 设备配置
         self.device = select_device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        # self.device = select_device('cpu')
         # 加载模型
         self.model = attempt_load(model_path, device=self.device)
         # # 加载模型
@@ -33,7 +34,13 @@ class YOLOv5:
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         # self.cap = cv2.VideoCapture(0)
-        self.stream_loader = LoadStreams("0", img_size=640)
+        # self.stream_loader = LoadStreams("rtsp://admin:ydzm1984@192.168.1.64:554/Streaming/Channels/1", img_size=640)
+        # self.stream_loader = LoadStreams("0", img_size=640)
+        # self.stream_loader = LoadStreams("rtmp://122.224.127.166:30002/live/openUrl/l7lh2Ao", img_size=640)
+        #ip摄像头位置
+        self.stream_loader = LoadStreams("rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1721444018&id=604265066984841216&t=66f51dfbc5ed29dafa60634ee6083a59271bd4b7f185bcdb0df9676e424cba63&ev=100", img_size=640)
+        #北墙东向西
+        # self.stream_loader = LoadStreams("rtmp://122.224.127.166:30002/live/openUrl/FqK51y8", img_size=640)
         # 先调用 __iter__ 方法来初始化 count 属性
         self.stream_loader.__iter__()
 
@@ -79,30 +86,3 @@ class YOLOv5:
 
             # 打印结果
             return det
-# def detect(self, img_data, conf_thres=0.25, iou_thres=0.45):
-#     imgsz = check_img_size(640, s=self.model.stride.max())  # 检查图片大小
-#     half = self.device.type != 'cpu'  # 半精度只支持GPU
-#
-#     if half:
-#         self.model.half()
-#
-#     # 设置模型为评估模式
-#     self.model.eval()
-#
-#     # 将图像ndarray数据转换为适合模型输入的Tensor
-#     img = torch.from_numpy(img_data).permute(2, 0, 1).unsqueeze(0).float().to(self.device)
-#     img /= 255.0  # 图像归一化
-#
-#     # 推理
-#     with torch.no_grad():
-#         pred = self.model(img, augment=False)[0]
-#
-#     # 应用NMS
-#     pred = non_max_suppression(pred, conf_thres, iou_thres)
-#
-#     # 处理检测结果
-#     for i, det in enumerate(pred):
-#         det[:, :4] = scale_boxes(img.shape[2:], det[:, :4], img_data.shape[:2]).round()
-#
-#         # 打印结果
-#         return det
