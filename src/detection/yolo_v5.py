@@ -38,8 +38,10 @@ class YOLOv5:
         # self.stream_loader = LoadStreams("0", img_size=640)
         # self.stream_loader = LoadStreams("rtmp://122.224.127.166:30002/live/openUrl/l7lh2Ao", img_size=640)
         #ip摄像头位置
-        self.stream_loader = LoadStreams("rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1721444018&id=604265066984841216&t=66f51dfbc5ed29dafa60634ee6083a59271bd4b7f185bcdb0df9676e424cba63&ev=100", img_size=640)
-        #北墙东向西
+        # self.stream_loader = LoadStreams("rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722045702&id=606788712942522368&t=efe6f450f2c2192377d9adccd4ed717bfb5e8adb5a95507a63f38be542c67991&ev=100", img_size=640)
+        self.url = "rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722045702&id=606788712942522368&t=efe6f450f2c2192377d9adccd4ed717bfb5e8adb5a95507a63f38be542c67991&ev=100"
+        self.stream_loader = LoadStreams(self.url, img_size=640)
+        # 北墙东向西
         # self.stream_loader = LoadStreams("rtmp://122.224.127.166:30002/live/openUrl/FqK51y8", img_size=640)
         # 先调用 __iter__ 方法来初始化 count 属性
         self.stream_loader.__iter__()

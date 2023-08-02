@@ -32,12 +32,18 @@ class Polygon(PolygonSubject):
         self.homography_matrix = np.zeros((3, 3), dtype=np.uint8)
         self.control_points = []
 
-        for x, y in self.points:
-            point = self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='white', outline='black')
-            self.control_points.append(point)
+        # for x, y in self.points:
+        #     point = self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='white', outline='black')
+        #     self.control_points.append(point)
 
         self.dragging_point = None
         self.update_polygon()
+    def clear_control_point(self):
+        self.control_points = []
+    def clear_point(self):
+        self.points = []
+    def control_points_is_empty(self):
+        return not self.control_points
 
     def add_control_point(self, point):
         self.control_points.append(point)
