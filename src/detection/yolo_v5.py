@@ -37,8 +37,14 @@ class YOLOv5:
         # self.stream_loader = LoadStreams("rtsp://admin:ydzm1984@192.168.1.64:554/Streaming/Channels/1", img_size=640)
         # self.stream_loader = LoadStreams("0", img_size=640)
         # self.stream_loader = LoadStreams("rtmp://122.224.127.166:30002/live/openUrl/l7lh2Ao", img_size=640)
-        #ip摄像头位置
-        self.stream_loader = LoadStreams("rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1721444018&id=604265066984841216&t=66f51dfbc5ed29dafa60634ee6083a59271bd4b7f185bcdb0df9676e424cba63&ev=100", img_size=640)
+        #新ip摄像头位置
+        # self.stream_loader = LoadStreams("rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722161245&id=607273335822233600&t=956d2e870642bb1bb0c6195ffaf63993e92fb792ec64132d2ec4c0a7798d1bb1&ev=100", img_size=640)
+        # 新ip摄像头位置
+        # self.stream_loader = LoadStreams("rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_2?expire=1722161245&id=607273335931277312&t=4bfe186063ffafeedb6180e4305f2569e994341f329105d7c07e3473f85caad8&ev=100", img_size=640)
+        #旧ip摄像头高清
+        self.stream_loader = LoadStreams("rtmp://rtmp03open.ys7.com:1935/v3/openlive/724460572_1_1?expire=1722161140&id=607272892865970176&t=a4eb9528c0e1ccea689a4b36ab5b7c30f94516f39670e9f452719e9de8a28103&ev=100", img_size=640)
+        #旧ip摄像头流畅
+        # self.stream_loader = LoadStreams("rtmp://rtmp03open.ys7.com:1935/v3/openlive/724460572_1_2?expire=1722161140&id=607272892626894848&t=ca66d259a22fe6ce923089fa1a47dae4c58d0a189613c5c678f49d70a3a0fcf5&ev=100", img_size=640)
         #北墙东向西
         # self.stream_loader = LoadStreams("rtmp://122.224.127.166:30002/live/openUrl/FqK51y8", img_size=640)
         # 先调用 __iter__ 方法来初始化 count 属性
