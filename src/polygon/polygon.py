@@ -84,10 +84,10 @@ class Polygon(PolygonSubject):
         self.points[index] = (x, y)
         self.generate_mask()
         self.generate_homography_matrix()
-        # # 使用matplotlib将NumPy数组显示为灰度图像
-        # plt.imshow(self.mask, cmap='gray')
-        # # 保存图像
-        # plt.savefig('image_from_numpy_array.png', bbox_inches='tight', pad_inches=0)
+        # 使用matplotlib将NumPy数组显示为灰度图像
+        plt.imshow(self.mask, cmap='gray')
+        # 保存图像
+        plt.savefig('image_from_numpy_array.png', bbox_inches='tight', pad_inches=0)
         self.update_polygon()
 
     def clear_dragging_point(self):

@@ -1,13 +1,14 @@
 import cv2
+import numpy as np
 from kivy.app import App
 from kivy.graphics import Line, Color
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
+from matplotlib import pyplot as plt
 from ultralytics import YOLO
 import os
 
-from src.myresults import MyResults
 
 os.environ['http_proxy'] = 'http://127.0.0.1:7890'
 os.environ['https_proxy'] = 'http://127.0.0.1:7890'
@@ -16,12 +17,12 @@ class KivyCamera(Image):
     def __init__(self, capture=None, fps=30.0, **kwargs):
         super(KivyCamera, self).__init__(**kwargs)
         self.capture = capture
-        self.model = YOLO('models/yolov8s-seg.pt')
+        self.model = YOLO('models/yolov8s.pt')
         self.bind(norm_image_size=self.update_line, pos=self.update_line)
         with self.canvas.after:  # ensure the line is drawn above the image
             Color(1, 0, 0, 1)  # set color to red
             self.line = Line(width=2)
-        # Clock.schedule_interval(self.update, 1.0 / fps)
+        Clock.schedule_interval(self.update, 1.0 / fps)
     def update_line(self, instance, value):
         # compute the position and size of the image within the widget
         image_x = self.x + (self.width - self.norm_image_size[0]) / 2
@@ -34,12 +35,11 @@ class KivyCamera(Image):
         if ret:
             # Run YOLOv8 inference on the frame
             results = self.model(frame)
-
-            # # Visualize the results on the frame
-            # annotated_frame = results[0].plot()
-            my_results = MyResults(results[0])
+            probs = results[0].probs
+            if probs is not None:
+                print(probs.top1)
             # Visualize the results on the frame
-            annotated_frame = my_results.plot()
+            annotated_frame = results[0].plot()
             # OpenCV图像通常使用BGR颜色模式，但Kivy使用RGB模式，因此需要颜色转换
             annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
             buf1 = cv2.flip(annotated_frame, 0)
