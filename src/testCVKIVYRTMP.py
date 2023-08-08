@@ -29,7 +29,7 @@ class KivyCamera(Image):
         self.line.rectangle = (image_x, image_y, *self.norm_image_size)
         print(f'image_x:{image_x}, image_y:{image_y}, norm_image_size:{self.norm_image_size}, instance.pos:{instance.pos}, instance.size:{instance.size}')
 
-    def update(self, dt):
+    def update(self, dt, rect_width=300, rect_height=200):
         ret, frame = self.capture.read()
         if ret:
             # Run YOLOv8 inference on the frame
@@ -39,7 +39,7 @@ class KivyCamera(Image):
             # annotated_frame = results[0].plot()
             my_results = MyResults(results[0])
             # Visualize the results on the frame
-            annotated_frame = my_results.plot()
+            annotated_frame = my_results.plot(masks=False, rect_width=rect_width, rect_height=rect_height)
             # OpenCV图像通常使用BGR颜色模式，但Kivy使用RGB模式，因此需要颜色转换
             annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
             buf1 = cv2.flip(annotated_frame, 0)

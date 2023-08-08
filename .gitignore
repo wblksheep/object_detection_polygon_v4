@@ -1,2 +1,5 @@
 venv/
 src/models/
+src/*.jpeg
+src/*.jpg
+src/*.png

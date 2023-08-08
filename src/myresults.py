@@ -26,6 +26,8 @@ class MyResults:
              boxes=True,
              masks=True,
              probs=True,
+             rect_width=300,
+             rect_height=200,
              **kwargs  # deprecated args TODO: remove support in 8.2
              ):
         if img is None and isinstance(self.results.orig_img, torch.Tensor):
@@ -59,34 +61,40 @@ class MyResults:
             for d in reversed(pred_boxes):
                 # print(d.boxes)
                 x1, y1, x2, y2 = d.boxes.data[0][:4]
-                x, y = int(x1 + x2), int(y1 + y2)
+                x, y = int((x1 + x2)/2), int((y1 + y2)/2)
                 if my_mask[y, x] == 255:
                     points.append([x, y])
                 c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
                 name = ('' if id is None else f'id:{id} ') + names[c]
                 label = (f'{name} {conf:.2f}' if conf else name) if labels else None
                 annotator.box_label(d.xyxy.squeeze(), label, color=colors(c, True))
-            if points :
+            if points:
                 points = np.asarray(points, dtype=np.float32)
                 # 将点转换为齐次坐标
                 points_homogeneous = np.column_stack((points, np.ones(points.shape[0])))
-
                 # 应用单应性矩阵
                 transformed_points_homogeneous = np.dot(my_mat, points_homogeneous.T).T
                 transformed_points = transformed_points_homogeneous[:, :2] / transformed_points_homogeneous[:, 2:]
-                # 可视化原始点和变换后的点
-                plt.figure(figsize=(10, 6))
+                transformed_points = transformed_points.astype(np.int32)
+                # 创建一个200*300的空白图像
+                screen = np.zeros((rect_height, rect_width, 3), dtype="uint8")
+                # 定义点的大小
+                radius = 5
+                # 显示图像
+                for point in transformed_points:
+                    cv2.circle(screen, point, radius, (0, 255, 0), -1)
 
-                plt.plot(points[:, 0], points[:, 1], 'bo', label='Original Points')
-                plt.plot(transformed_points[:, 0], transformed_points[:, 1], 'ro', label='Transformed Points')
-
-                for i in range(points.shape[0]):
-                    plt.plot([points[i, 0], transformed_points[i, 0]], [points[i, 1], transformed_points[i, 1]], 'g-')
-
-                plt.legend()
-                plt.title('Visualization of Points Transformed by Homography Matrix')
-                plt.axis('equal')
-                plt.show()
+                cv2.imshow('Image with Point', screen)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+            else:
+                # 创建一个200*300的空白图像
+                screen = np.zeros((rect_height, rect_width, 3), dtype="uint8")
+                cv2.imshow('Image with Point', screen)
+        else:
+            # 创建一个200*300的空白图像
+            screen = np.zeros((rect_height, rect_width, 3), dtype="uint8")
+            cv2.imshow('Image with Point', screen)
 
         # Plot Classify results
         if pred_probs is not None and show_probs:
