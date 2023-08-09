@@ -81,16 +81,16 @@ class DisplayScreen(Screen):
     d = 100  # 拖动区域的能力大小
     capture = ObjectProperty(None)
     fps = NumericProperty(30.0)
-    points = ListProperty([[0, 1440], [0, 0], [2560, 0], [2560, 1440]])
+    points = ListProperty([[0, 0], [0, 1440], [2560, 1440], [2560, 0]])
     # points = ListProperty([[300, 300], [450, 150], [660, 300], [450, 450]])
     linewidth = NumericProperty(3)
     _current_point = None  # 被拖动的点的下标
 
     def __init__(self, **kwargs):
         super(DisplayScreen, self).__init__(**kwargs)
-        # self.capture = cv2.VideoCapture(0)
-        self.capture = cv2.VideoCapture(
-            'rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722081714&id=606939758247530496&t=53c53c7f999bf9f19183ec9c9dd1fa8d76d6891d7a35fd4ccb8fdf9b2c220067&ev=100')
+        self.capture = cv2.VideoCapture(0)
+        # self.capture = cv2.VideoCapture(
+        #     'rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722081714&id=606939758247530496&t=53c53c7f999bf9f19183ec9c9dd1fa8d76d6891d7a35fd4ccb8fdf9b2c220067&ev=100')
         # self.capture = cv2.VideoCapture(
         #     'rtmp://rtmp03open.ys7.com:1935/v3/openlive/724460572_1_1?expire=1722161140&id=607272892865970176&t=a4eb9528c0e1ccea689a4b36ab5b7c30f94516f39670e9f452719e9de8a28103&ev=100')
         self.camera = KivyCamera(capture=self.capture, fps=30.0)
@@ -100,8 +100,15 @@ class DisplayScreen(Screen):
         # self.add_widget(Button(text='Back to Main Screen', on_release=self.change_screen))
         # Clock.schedule_interval(self.update, 1.0 / self.fps)
         self._update_points_animation_ev = None
-        self.rect_width=300
-        self.rect_height=200
+        self.rect_width = 300
+        self.rect_height = 200
+        with open("polygon.json", "r") as f:
+            polygon = json.load(f)
+        for i in range(4):
+            self.points[i] = polygon['polygon'][i]
+        self.bind(size=self.update_line)
+    def update_line(self, instance, value):
+        self.camera.update_line(instance, value)
 
     # def update_polygon(self, instance, value):
     #     instance.image_x
@@ -127,6 +134,7 @@ class DisplayScreen(Screen):
     #     self.fg.pos = (self.width / 4, self.height / 4)
     #     self.fg.size = (self.width / 2, self.height / 2)
     def save_polygon(self, button):
+        print(f'pos:{self.camera.pos}')
         p = []
         for point in self.points:
             p.append(list(point))
@@ -142,10 +150,14 @@ class DisplayScreen(Screen):
         plt.imshow(self.mask, cmap='gray')
         # 保存图像
         plt.savefig('image_from_numpy_array.png', bbox_inches='tight', pad_inches=0)
+
     def generate_mask(self, image_shape=(1440, 2560)):
         self.mask = np.zeros(image_shape, dtype=np.uint8)
-        pts = np.array(self.points, dtype=np.int32).reshape((-1, 1, 2))
+        pts = np.asarray(self.points, dtype=np.int32)
+        pts[:, 1] = 1440 - pts[:, 1]
+        pts = np.asarray(pts, dtype=np.int32).reshape((-1, 1, 2))
         cv2.fillPoly(self.mask, [pts], 255)
+
     def generate_homography_matrix(self, rect_width, rect_height):
 
         quad_vertices = np.array(self.points, dtype=np.float32)
