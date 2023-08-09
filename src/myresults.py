@@ -11,8 +11,9 @@ from src.myannotator import MyAnnotator
 
 
 class MyResults:
-    def __init__(self, results):
+    def __init__(self, results, name):
         self.results = results
+        self.name = name
 
     def plot(self,
              conf=True,
@@ -88,17 +89,17 @@ class MyResults:
                 for point in transformed_points:
                     cv2.circle(screen, (point[0], rect_height-point[1]), radius, (0, 255, 0), -1)
 
-                cv2.imshow('Image with Point', screen)
+                cv2.imshow(self.name, screen)
                 # cv2.waitKey(0)
                 # cv2.destroyAllWindows()
             else:
                 # 创建一个200*300的空白图像
                 screen = np.zeros((rect_height, rect_width, 3), dtype="uint8")
-                cv2.imshow('Image with Point', screen)
+                cv2.imshow(self.name, screen)
         else:
             # 创建一个200*300的空白图像
             screen = np.zeros((rect_height, rect_width, 3), dtype="uint8")
-            cv2.imshow('Image with Point', screen)
+            cv2.imshow(self.name, screen)
 
         # Plot Classify results
         if pred_probs is not None and show_probs:

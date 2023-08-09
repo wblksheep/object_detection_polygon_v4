@@ -24,8 +24,13 @@ Builder.load_string('''
         Button:
             size_hint: None, None
             size: 100, 44
-            text:'Go to Display Screen'
-            on_release: root.change_screen(self)
+            text:'Screen1'
+            on_release: root.change_screen1(self)
+        Button:
+            size_hint: None, None
+            size: 100, 44
+            text:'Screen2'
+            on_release: root.change_screen2(self)
         # ToggleButton:
         #     size_hint: None, None
         #     size: 100, 44
@@ -73,10 +78,11 @@ class ControlScreen(Screen):
         super(ControlScreen, self).__init__(**kwargs)
         # self.add_widget(Button(text='Go to Display Screen', on_release=self.change_screen))
 
-    def change_screen(self, button):
-        self.manager.current = 'display'
+    def change_screen1(self, button):
+        self.manager.current = 'display1'
 
-
+    def change_screen2(self, button):
+        self.manager.current = 'display2'
 class DisplayScreen(Screen):
     d = 100  # 拖动区域的能力大小
     capture = ObjectProperty(None)
@@ -86,14 +92,14 @@ class DisplayScreen(Screen):
     linewidth = NumericProperty(3)
     _current_point = None  # 被拖动的点的下标
 
-    def __init__(self, **kwargs):
+    def __init__(self, rtmp=0, **kwargs):
         super(DisplayScreen, self).__init__(**kwargs)
-        self.capture = cv2.VideoCapture(0)
+        self.capture = cv2.VideoCapture(rtmp)
         # self.capture = cv2.VideoCapture(
         #     'rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722081714&id=606939758247530496&t=53c53c7f999bf9f19183ec9c9dd1fa8d76d6891d7a35fd4ccb8fdf9b2c220067&ev=100')
         # self.capture = cv2.VideoCapture(
         #     'rtmp://rtmp03open.ys7.com:1935/v3/openlive/724460572_1_1?expire=1722161140&id=607272892865970176&t=a4eb9528c0e1ccea689a4b36ab5b7c30f94516f39670e9f452719e9de8a28103&ev=100')
-        self.camera = KivyCamera(capture=self.capture, fps=30.0)
+        self.camera = KivyCamera(capture=self.capture, fps=30.0, name=self.name)
         # self.camera.bind(norm_image_size=self.update_polygon, pos=self.update_polygon)
         self.ids.boxlayout.add_widget(self.camera)
         # self.image = Image(self.camera)
@@ -103,12 +109,17 @@ class DisplayScreen(Screen):
         self.rect_width = 300
         self.rect_height = 200
         with open("polygon.json", "r") as f:
-            polygon = json.load(f)
-        for i in range(4):
-            self.points[i] = polygon['polygon'][i]
+            content = f.read().strip()
+            if not content:
+                print('File is empty')
+            else:
+                polygon = json.loads(content)
+                if f'{self.name}' in polygon:
+                    for i in range(4):
+                        self.points[i] = polygon[f'{self.name}']['polygon'][i]
         self.bind(size=self.update_line)
     def update_line(self, instance, value):
-        self.camera.update_line(instance, value)
+        image_x, image_y, image_size = self.camera.update_line(instance, value)
 
     # def update_polygon(self, instance, value):
     #     instance.image_x
@@ -134,12 +145,20 @@ class DisplayScreen(Screen):
     #     self.fg.pos = (self.width / 4, self.height / 4)
     #     self.fg.size = (self.width / 2, self.height / 2)
     def save_polygon(self, button):
-        print(f'pos:{self.camera.pos}')
         p = []
         for point in self.points:
             p.append(list(point))
+        with open("polygon.json", "r") as f:
+            content = f.read()
+            if not content:
+                print('File is empty')
+                polygon = {}
+            else:
+                polygon = json.loads(content)
+            polygon[f'{self.name}'] = {'polygon': p}
         with open("polygon.json", "w+") as f:
-            json.dump({"polygon": p}, f, indent=4)
+            json.dump(polygon, f, indent=4)
+
         self.rect_width = int(self.ids.rect_width.text) if self.ids.rect_width.text else 300
         self.rect_height = int(self.ids.rect_height.text) if self.ids.rect_height.text else 200
         self.generate_homography_matrix(rect_width=self.rect_width, rect_height=self.rect_height)
@@ -157,6 +176,11 @@ class DisplayScreen(Screen):
         pts[:, 1] = 1440 - pts[:, 1]
         pts = np.asarray(pts, dtype=np.int32).reshape((-1, 1, 2))
         cv2.fillPoly(self.mask, [pts], 255)
+    def generate_HM_change(self, image_shape=(1440, 2560)):
+        quad_vertices = np.array(self.points, dtype=np.float32)
+        rect_vertices = np.array([[0, 0], [0, rect_height], [rect_width, rect_height], [rect_width, 0]],
+                                 dtype=np.float32)
+        self.homography_matrix, _ = cv2.findHomography(quad_vertices, rect_vertices)
 
     def generate_homography_matrix(self, rect_width, rect_height):
 
@@ -226,7 +250,8 @@ class MyApp(App):
     def build(self):
         sm = ScreenManager()
         sm.add_widget(ControlScreen(name='control'))
-        sm.add_widget(DisplayScreen(name='display'))
+        sm.add_widget(DisplayScreen(name='display1', rtmp=0))
+        sm.add_widget(DisplayScreen(name='display2', rtmp='rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722081714&id=606939758247530496&t=53c53c7f999bf9f19183ec9c9dd1fa8d76d6891d7a35fd4ccb8fdf9b2c220067&ev=100'))
         return sm
 
 

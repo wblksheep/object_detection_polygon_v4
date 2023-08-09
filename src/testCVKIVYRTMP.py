@@ -13,10 +13,11 @@ os.environ['http_proxy'] = 'http://127.0.0.1:7890'
 os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 #加载YOLOv8模型
 class KivyCamera(Image):
-    def __init__(self, capture=None, fps=30.0, **kwargs):
+    def __init__(self, capture=None, fps=30.0, name='firstWindow', **kwargs):
         super(KivyCamera, self).__init__(**kwargs)
         self.capture = capture
         self.model = YOLO('models/yolov8s-seg.pt')
+        self.name = name
         self.bind(norm_image_size=self.update_line, pos=self.update_line, size=self.update_line)
         with self.canvas.after:  # ensure the line is drawn above the image
             Color(1, 0, 0, 1)  # set color to red
@@ -28,6 +29,7 @@ class KivyCamera(Image):
         image_y = self.y + (instance.height - self.norm_image_size[1]) / 2
         self.line.rectangle = (image_x, image_y, *self.norm_image_size)
         print(f'image_x:{image_x}, image_y:{image_y}, norm_image_size:{self.norm_image_size}, instance.pos:{instance.pos}, instance.size:{instance.size}')
+        return image_x, image_y, self.norm_image_size
 
     def update(self, dt, rect_width=300, rect_height=200):
         ret, frame = self.capture.read()
@@ -37,7 +39,7 @@ class KivyCamera(Image):
 
             # # Visualize the results on the frame
             # annotated_frame = results[0].plot()
-            my_results = MyResults(results[0])
+            my_results = MyResults(results[0], self.name)
             # Visualize the results on the frame
             annotated_frame = my_results.plot(masks=False, rect_width=rect_width, rect_height=rect_height)
             # OpenCV图像通常使用BGR颜色模式，但Kivy使用RGB模式，因此需要颜色转换
