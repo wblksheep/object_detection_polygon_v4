@@ -6,14 +6,17 @@ from matplotlib import pyplot as plt
 with open("polygon.json", "r") as f:
     polygon = json.load(f)
 print(polygon)
-my_mat = np.load("homography_matrix.npy")
-my_mask = np.load("mask.npy")
-point = np.asarray(polygon['polygon'])
-
+my_mat = np.load("display1_homography_matrix.npy")
+my_mask = np.load("display1_mask.npy")
+point = np.array(polygon['display1']['polygon'])
+origin = polygon['display1']['origin']
+point = np.array(point, dtype=np.int32)
+point[:, 0] = point[:, 0] - origin[0]
+point[:, 1] = point[:, 1] - origin[1]
 while True:
     # 生成一个随机点的坐标
-    random_x = np.random.randint(2560)
-    random_y = np.random.randint(1440)
+    random_x = np.random.randint(640)
+    random_y = np.random.randint(480)
     if my_mask[random_y, random_x] == 255:
         point = np.vstack((point, np.array((random_x, random_y))))
         print(point)
@@ -44,10 +47,8 @@ while True:
         radius = 5
         # 显示图像
         for points in transformed_points:
-            cv2.circle(screen, (points[0], 200-points[1]), radius, (0, 255, 0), -1)
+            cv2.circle(screen, (points[0], 200 - points[1]), radius, (0, 255, 0), -1)
 
         cv2.imshow('Image with Point', screen)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
-

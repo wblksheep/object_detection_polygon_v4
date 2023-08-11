@@ -31,6 +31,8 @@ class MyResults:
              probs=True,
              rect_width=300,
              rect_height=200,
+             image_shape=(1440, 2560),
+             origin=(0, 0),
              **kwargs  # deprecated args TODO: remove support in 8.2
              ):
         if img is None and isinstance(self.results.orig_img, torch.Tensor):
@@ -57,8 +59,9 @@ class MyResults:
                     2, 0, 1).flip(0).contiguous() / 255
             idx = pred_boxes.cls if pred_boxes else range(len(pred_masks))
             my_annotator.annotator.masks(pred_masks.data, colors=[colors(x, True) for x in idx], im_gpu=im_gpu)
-        my_mask = np.load("mask.npy")
-        my_mat = np.load("homography_matrix.npy")
+        my_mask = np.load(f"{self.name}_mask.npy")
+        my_mat = np.load(f"{self.name}_homography_matrix.npy")
+        ret_points = None
         # Plot Detect results
         if pred_boxes and show_boxes:
             points = []
@@ -66,8 +69,9 @@ class MyResults:
                 # print(d.boxes)
                 x1, y1, x2, y2 = d.xyxy.squeeze()
                 x, y = int((x1 + x2)/2), int((y1 + y2)/2)
+                y = image_shape[0] - y
                 if my_mask[y, x] == 255:
-                    points.append([x, 1440-y])
+                    points.append([x, y])
                 c, conf, id = int(d.cls), float(d.conf) if conf else None, None if d.id is None else int(d.id.item())
                 name = ('' if id is None else f'id:{id} ') + names[c]
                 label = (f'{name} {conf:.2f}' if conf else name) if labels else None
@@ -81,6 +85,8 @@ class MyResults:
                 transformed_points_homogeneous = np.dot(my_mat, points_homogeneous.T).T
                 transformed_points = transformed_points_homogeneous[:, :2] / transformed_points_homogeneous[:, 2:]
                 transformed_points = transformed_points.astype(np.int32)
+                ret_points = np.array(transformed_points, dtype=np.float32)
+                ret_points[:, 1] = rect_height-ret_points[:, 1]
                 # 创建一个200*300的空白图像
                 screen = np.zeros((rect_height, rect_width, 3), dtype="uint8")
                 # 定义点的大小
@@ -112,7 +118,7 @@ class MyResults:
             for k in reversed(self.results.keypoints.data):
                 my_annotator.annotator.kpts(k, self.results.orig_shape, radius=kpt_radius, kpt_line=kpt_line)
 
-        return my_annotator.annotator.result()
+        return my_annotator.annotator.result(), ret_points
 
     def __getattr__(self, attr):
         # this method is called when the requested attribute is not found in the class

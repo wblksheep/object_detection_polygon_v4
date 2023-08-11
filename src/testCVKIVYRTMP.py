@@ -5,17 +5,18 @@ from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 from ultralytics import YOLO
-import os
+
 
 from src.myresults import MyResults
-
-os.environ['http_proxy'] = 'http://127.0.0.1:7890'
-os.environ['https_proxy'] = 'http://127.0.0.1:7890'
+# import os
+# os.environ['http_proxy'] = 'http://127.0.0.1:7890'
+# os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 #加载YOLOv8模型
 class KivyCamera(Image):
-    def __init__(self, capture=None, fps=30.0, name='firstWindow', **kwargs):
+    def __init__(self, rtmp=0, fps=30.0, name='firstWindow', **kwargs):
         super(KivyCamera, self).__init__(**kwargs)
-        self.capture = capture
+        self.rtmp = rtmp
+        self.capture = cv2.VideoCapture(self.rtmp)
         self.model = YOLO('models/yolov8s-seg.pt')
         self.name = name
         self.bind(norm_image_size=self.update_line, pos=self.update_line, size=self.update_line)
@@ -31,9 +32,13 @@ class KivyCamera(Image):
         print(f'image_x:{image_x}, image_y:{image_y}, norm_image_size:{self.norm_image_size}, instance.pos:{instance.pos}, instance.size:{instance.size}')
         return image_x, image_y, self.norm_image_size
 
-    def update(self, dt, rect_width=300, rect_height=200):
+    def update(self, dt, polygon, rect_width=300, rect_height=200):
         ret, frame = self.capture.read()
-        if ret:
+        if not ret:
+            print("连接中断，重新连接...")
+            self.capture.release()
+            self.capture = cv2.VideoCapture(self.rtmp)
+        else:
             # Run YOLOv8 inference on the frame
             results = self.model(frame)
 
@@ -41,7 +46,7 @@ class KivyCamera(Image):
             # annotated_frame = results[0].plot()
             my_results = MyResults(results[0], self.name)
             # Visualize the results on the frame
-            annotated_frame = my_results.plot(masks=False, rect_width=rect_width, rect_height=rect_height)
+            annotated_frame, ret_points = my_results.plot(masks=False, rect_width=rect_width, rect_height=rect_height, image_shape=polygon[f"{self.name}"]['image_shape'], origin=polygon[f"{self.name}"]['origin'])
             # OpenCV图像通常使用BGR颜色模式，但Kivy使用RGB模式，因此需要颜色转换
             annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
             buf1 = cv2.flip(annotated_frame, 0)
@@ -50,6 +55,7 @@ class KivyCamera(Image):
             image_texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
             # 更新纹理
             self.texture = image_texture
+            return ret_points
 
 class CamApp(App):
     def build(self):
