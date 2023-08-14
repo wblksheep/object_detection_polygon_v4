@@ -61,6 +61,7 @@ Builder.load_string('''
             text:'Back to Main Screen'
             on_release: root.change_screen(self)
         ToggleButton:
+            id:animatebutton
             text: 'Animate'
             on_state: root.animate(self.state == 'down')
         Button:
@@ -91,10 +92,11 @@ class DisplayScreen(Screen):
     points = ListProperty([[0, 0], [0, 1440], [2560, 1440], [2560, 0]])
     linewidth = NumericProperty(3)
     _current_point = None
-    def __init__(self, rtmp=0, port=8760,  **kwargs):
+    def __init__(self, index=0, rtmp=0, port=8760,  **kwargs):
         super(DisplayScreen, self).__init__(**kwargs)
+        self.reconnect = False
         self.ret_points = None
-        self.camera = KivyCamera(rtmp=rtmp, fps=30.0, name=self.name)
+        self.camera = KivyCamera(index=index, fps=30.0, name=self.name)
         self.ids.boxlayout.add_widget(self.camera)
         self._update_points_animation_ev = None
         self.rect_width = 300
@@ -181,13 +183,23 @@ class DisplayScreen(Screen):
                                  dtype=np.float32)
         self.homography_matrix, _ = cv2.findHomography(quad_vertices, rect_vertices)
     def animate(self, do_animation):
-        if do_animation:
-            self._update_points_animation_ev = Clock.schedule_interval(
-                self.update_points_animation, 1.0 / self.fps)
-        elif self._update_points_animation_ev is not None:
+        if do_animation and not self.reconnect:
+            self.start_task()
+        elif self._update_points_animation_ev is not None or self.reconnect:
             self._update_points_animation_ev.cancel()
+            self.ids.animatebutton.state = 'normal'
+            self.reconnect = False
+
+    def start_task(self):
+        # 在单独的线程中运行长时间任务
+        thread = threading.Thread(target=self.background_task)
+        thread.start()
+    def background_task(self):
+        self.camera.updateRTMP()
+        self._update_points_animation_ev = Clock.schedule_interval(
+            self.update_points_animation, 1.0 / self.fps)
     def update_points_animation(self, dt):
-        self.ret_points = self.camera.update(dt, self.polygon, self.rect_width, self.rect_height)
+        self.ret_points, self.reconnect = self.camera.update(dt, self.polygon, self.rect_width, self.rect_height)
     def on_touch_down(self, touch):
         if super(DisplayScreen, self).on_touch_down(touch):
             return True
@@ -225,11 +237,14 @@ class MyApp(App):
     def build(self):
         sm = ScreenManager()
         sm.add_widget(ControlScreen(name='control'))
-        sm.add_widget(DisplayScreen(name='display1', rtmp=0, port=8761))
+        sm.add_widget(DisplayScreen(name='display1', index='a9cbdf811a134adf9358c6e01713f8f5', port=8761))
+        # sm.add_widget(DisplayScreen(name='display2',
+        #                             rtmp='rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722839940&id=610119986496671744&t=b5adf3bf765359cc09fe4be5d6fc8233f59ecc70787fe92f577329ea9136aa9d&ev=100', port=8762))
         sm.add_widget(DisplayScreen(name='display2',
-                                    rtmp='rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722081714&id=606939758247530496&t=53c53c7f999bf9f19183ec9c9dd1fa8d76d6891d7a35fd4ccb8fdf9b2c220067&ev=100', port=8762))
+                                    index='000649a9fa9847a69348dc4b15f1532f',
+                                    port=8762))
         sm.add_widget(DisplayScreen(name='display3',
-                                    rtmp='rtmp://122.224.127.166:30002/live/openUrl/nzTlsXu', port=8763))
+                                    index='80454c2b3c9a486c832d2c6edb2575da', port=8763))
         return sm
 
 

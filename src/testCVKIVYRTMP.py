@@ -1,4 +1,7 @@
+import json
+
 import cv2
+import requests
 from kivy.app import App
 from kivy.graphics import Line, Color
 from kivy.uix.image import Image
@@ -13,17 +16,38 @@ from src.myresults import MyResults
 # os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 #加载YOLOv8模型
 class KivyCamera(Image):
-    def __init__(self, rtmp=0, fps=30.0, name='firstWindow', **kwargs):
+    url = 'http://zns.china-yd.com:20001/monitor/getHKMonitorUrl'
+    headers = {
+        'Content-Type': 'application/json',
+        'Cookie': 'sessionId=e56668e2-851f-49a8-98dc-70d7fa5eb9df',
+        'Accept': 'application/json',
+    }
+    data = {
+        "brokerId": 2,
+        "cameraIndexCode": "",
+        "protocol": "rtmp",
+        "streamType": 0,
+        "transmode": 1
+    }
+    def __init__(self, index="0", fps=30.0, name='firstWindow', **kwargs):
         super(KivyCamera, self).__init__(**kwargs)
-        self.rtmp = rtmp
-        self.capture = cv2.VideoCapture(self.rtmp)
+        self.data["cameraIndexCode"] = index
+        self.rtmp = self.getRTMP()
+        self.capture = None
         self.model = YOLO('models/yolov8s-seg.pt')
         self.name = name
         self.bind(norm_image_size=self.update_line, pos=self.update_line, size=self.update_line)
         with self.canvas.after:  # ensure the line is drawn above the image
             Color(1, 0, 0, 1)  # set color to red
             self.line = Line(width=2)
+        self.retries = 0 # 初始化重连尝试次数
+        self.max_retries = 3 # 设置最大重连尝试次数
         # Clock.schedule_interval(self.update, 1.0 / fps)
+    def getRTMP(self):
+        response = requests.post(self.url, json=self.data, headers=self.headers)
+        res = json.loads(response.text)
+        res = json.loads(res['data'])
+        return res["url"]
     def update_line(self, instance, value):
         # compute the position and size of the image within the widget
         image_x = self.x + (instance.width - self.norm_image_size[0]) / 2
@@ -32,12 +56,24 @@ class KivyCamera(Image):
         print(f'image_x:{image_x}, image_y:{image_y}, norm_image_size:{self.norm_image_size}, instance.pos:{instance.pos}, instance.size:{instance.size}')
         return image_x, image_y, self.norm_image_size
 
+    def updateRTMP(self):
+        self.capture = cv2.VideoCapture(self.rtmp)
+        # 连续读取多个帧以清空缓冲区
+        for _ in range(350):  # 你可以根据需求调整循环次数
+            ret, frame = self.capture.read()
     def update(self, dt, polygon, rect_width=300, rect_height=200):
         ret, frame = self.capture.read()
         if not ret:
             print("连接中断，重新连接...")
             self.capture.release()
+            self.retries += 1  # 增加尝试计数器
+            # if self.retries > self.max_retries:
+            #     print("超过最大尝试次数，停止重连。")
+            #     self.retries = 0  # 重置重连尝试计数，以便下一次可能的重连
+            #     self.updateRTMP()
+            #     return None, True  # 退出函数，不再尝试
             self.capture = cv2.VideoCapture(self.rtmp)
+            return None, False
         else:
             # Run YOLOv8 inference on the frame
             results = self.model(frame)
@@ -55,7 +91,7 @@ class KivyCamera(Image):
             image_texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
             # 更新纹理
             self.texture = image_texture
-            return ret_points
+            return ret_points, False
 
 class CamApp(App):
     def build(self):
