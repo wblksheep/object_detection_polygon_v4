@@ -89,7 +89,7 @@ class DisplayScreen(Screen):
     d = 100  # 拖动区域的能力大小
     capture = ObjectProperty(None)
     fps = NumericProperty(30.0)
-    points = ListProperty([[0, 0], [0, 1440], [2560, 1440], [2560, 0]])
+    points = ListProperty([[56, 0],[56, 1377],[2504, 1377],[2504, 0]])
     linewidth = NumericProperty(3)
     _current_point = None
     def __init__(self, index=0, rtmp=0, port=8760,  **kwargs):
@@ -155,33 +155,45 @@ class DisplayScreen(Screen):
             json.dump(self.polygon, f, indent=4)
         self.rect_width = int(self.ids.rect_width.text) if self.ids.rect_width.text else 300
         self.rect_height = int(self.ids.rect_height.text) if self.ids.rect_height.text else 200
-        self.generate_homography_matrix(rect_width=self.rect_width, rect_height=self.rect_height, origin=self.polygon[f'{self.name}']['origin'])
         image_shape = self.polygon[f'{self.name}']['image_shape']
-        self.generate_mask(image_shape=image_shape, origin=self.polygon[f'{self.name}']['origin'])
-        np.save(f"{self.name}_mask.npy", self.mask)
-        np.save(f"{self.name}_homography_matrix.npy", self.homography_matrix)
+        points = np.array(self.polygon[f'{self.name}']['polygon'])
+        p_points = np.array([[56, 0], [56, 1377], [2504, 1377], [2504, 0]], dtype=np.float32)
+        first_mat = self.generate_homography_matrix(p_points, 2560, 1440)
+        # 将点转换为齐次坐标
+        points_homogeneous = np.column_stack((points, np.ones(points.shape[0])))
+        # 应用单应性矩阵
+        transformed_points_homogeneous = np.dot(first_mat, points_homogeneous.T).T
+        transformed_points = transformed_points_homogeneous[:, :2] / transformed_points_homogeneous[:, 2:]
+        transformed_points = transformed_points.astype(np.int32)
+        my_mask = self.generate_mask(transformed_points)
+        second_mat = self.generate_homography_matrix(transformed_points, self.rect_width, self.rect_height)
+        np.save(f"{self.name}_mask.npy", my_mask)
+        np.save(f"{self.name}_first_mat.npy", first_mat)
+        np.save(f"{self.name}_second_mat.npy", second_mat)
         # 使用matplotlib将NumPy数组显示为灰度图像
-        plt.imshow(self.mask, cmap='gray')
+        plt.imshow(my_mask, cmap='gray')
         # 保存图像
         plt.savefig(f'{self.name}_image_from_numpy_array.png', bbox_inches='tight', pad_inches=0)
 
-    def generate_mask(self, image_shape=(1440, 2560), origin=(0, 0)):
-        self.mask = np.zeros(image_shape, dtype=np.uint8)
-        pts = np.array(self.points, dtype=np.int32)
-        pts[:, 1] = 1440 - pts[:, 1]
+    def generate_mask(self, points, image_shape=(1440, 2560), origin=(0, 0)):
+        mask = np.zeros(image_shape, dtype=np.uint8)
+        pts = np.array(points, dtype=np.int32)
+        pts[:, 1] = image_shape[0] - 1 - pts[:, 1]
         pts[:, 0] = pts[:, 0] - origin[0]
         pts[:, 1] = pts[:, 1] - origin[1]
         pts = np.array(pts, dtype=np.int32).reshape((-1, 1, 2))
-        cv2.fillPoly(self.mask, [pts], 255)
+        cv2.fillPoly(mask, [pts], 255)
+        return mask
 
-    def generate_homography_matrix(self, rect_width, rect_height, origin=(0, 0)):
-        pts = np.array(self.points, dtype=np.int32)
+    def generate_homography_matrix(self, points, rect_width, rect_height, origin=(0, 0)):
+        pts = np.array(points, dtype=np.int32)
         pts[:, 0] = pts[:, 0] - origin[0]
         pts[:, 1] = pts[:, 1] - origin[1]
         quad_vertices = np.array(pts, dtype=np.float32)
         rect_vertices = np.array([[0, 0], [0, rect_height], [rect_width, rect_height], [rect_width, 0]],
                                  dtype=np.float32)
-        self.homography_matrix, _ = cv2.findHomography(quad_vertices, rect_vertices)
+        homography_matrix, _ = cv2.findHomography(quad_vertices, rect_vertices)
+        return homography_matrix
     def animate(self, do_animation):
         if do_animation and not self.reconnect:
             self.start_task()

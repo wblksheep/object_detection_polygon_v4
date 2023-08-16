@@ -4,11 +4,10 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-
 def generate_mask(points, image_shape=(1440, 2560), origin=(0, 0)):
     mask = np.zeros(image_shape, dtype=np.uint8)
     pts = np.array(points, dtype=np.int32)
-    pts[:, 1] = 1440 - pts[:, 1]
+    pts[:, 1] = image_shape[0]- 1 - pts[:, 1]
     pts[:, 0] = pts[:, 0] - origin[0]
     pts[:, 1] = pts[:, 1] - origin[1]
     pts = np.array(pts, dtype=np.int32).reshape((-1, 1, 2))
@@ -28,7 +27,24 @@ def generate_homography_matrix(points, rect_width, rect_height, origin=(0, 0)):
 # my_mask = np.load("display1_mask.npy")
 # my_mat = np.load("display1_homography_matrix.npy")
 # points = np.array(polygon['display1']['polygon'])
-points = np.array([[544.0, 464.0],[563.0, 983.0],[1070.0, 974.0],[1086.0, 652.0]], dtype=np.float32)
+points = np.array([
+            [
+                56,
+                0
+            ],
+            [
+                56,
+                1377
+            ],
+            [
+                2504,
+                1377
+            ],
+            [
+                2504,
+                0
+            ]
+        ], dtype=np.float32)
 origin = [0, 0]
 # my_mat = generate_homography_matrix(points, 300, 200)
 p_points = np.array([[56, 0],[56, 1337],[2504, 1377],[2504, 0]], dtype=np.float32)
