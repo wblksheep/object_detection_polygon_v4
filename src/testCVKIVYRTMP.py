@@ -19,7 +19,7 @@ class KivyCamera(Image):
     url = 'http://zns.china-yd.com:20001/monitor/getHKMonitorUrl'
     headers = {
         'Content-Type': 'application/json',
-        'Cookie': 'sessionId=e56668e2-851f-49a8-98dc-70d7fa5eb9df',
+        'Cookie': 'sessionId=43a328c2-21a3-49eb-a81a-ad1c438b5753',
         'Accept': 'application/json',
     }
     data = {
