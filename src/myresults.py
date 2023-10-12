@@ -79,31 +79,6 @@ class MyResults:
             if points:
                 points = np.asarray(points, dtype=np.float32)
                 # points = np.asarray([[1629, 517]], dtype=np.float32)
-                p_points = np.array([
-            [
-                544.0,
-                464.0
-            ],
-            [
-                563.0,
-                983.0
-            ],
-            [
-                2502.0,
-                841.0
-            ],
-            [
-                2382.0,
-                186.99999999999994
-            ]
-        ], dtype=np.float32)
-                # 将点转换为齐次坐标
-                points_homogeneous = np.column_stack((p_points, np.ones(p_points.shape[0])))
-                # 应用单应性矩阵
-                transformed_points_homogeneous = np.dot(first_mat, points_homogeneous.T).T
-                transformed_points = transformed_points_homogeneous[:, :2] / transformed_points_homogeneous[:, 2:]
-                transformed_points = transformed_points.astype(np.int32)
-                points = np.vstack((points, transformed_points))
                 # 将点转换为齐次坐标
                 points_homogeneous = np.column_stack((points, np.ones(points.shape[0])))
                 # 应用单应性矩阵
@@ -112,19 +87,7 @@ class MyResults:
                 transformed_points = transformed_points.astype(np.int32)
                 ret_points = np.array(transformed_points, dtype=np.float32)
                 ret_points[:, 1] = rect_height-ret_points[:, 1]
-                # 可视化原始点和变换后的点
-                plt.figure(figsize=(10, 6))
 
-                plt.plot(points[:, 0], points[:, 1], 'bo', label='Original Points')
-                plt.plot(transformed_points[:, 0], transformed_points[:, 1], 'ro', label='Transformed Points')
-
-                for i in range(points.shape[0]):
-                    plt.plot([points[i, 0], transformed_points[i, 0]], [points[i, 1], transformed_points[i, 1]], 'g-')
-
-                plt.legend()
-                plt.title('Visualization of Points Transformed by Homography Matrix')
-                plt.axis('equal')
-                plt.show()
                 # 创建一个200*300的空白图像
                 screen = np.zeros((rect_height, rect_width, 3), dtype="uint8")
                 # 定义点的大小
@@ -134,8 +97,8 @@ class MyResults:
                     cv2.circle(screen, (point[0], rect_height-point[1]), radius, (0, 255, 0), -1)
 
                 cv2.imshow(self.name, screen)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
 
             else:
                 # 创建一个200*300的空白图像

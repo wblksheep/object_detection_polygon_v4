@@ -92,15 +92,13 @@ class DisplayScreen(Screen):
     points = ListProperty([[56, 0],[56, 1377],[2504, 1377],[2504, 0]])
     linewidth = NumericProperty(3)
     _current_point = None
-    def __init__(self, index=0, rtmp=0, port=8760,  **kwargs):
+    def __init__(self, rtsp=0, uri=8760,  **kwargs):
         super(DisplayScreen, self).__init__(**kwargs)
         self.reconnect = False
         self.ret_points = None
-        self.camera = KivyCamera(index=index, fps=30.0, name=self.name)
+        self.camera = KivyCamera(rtsp=rtsp, fps=30.0, name=self.name)
         self.ids.boxlayout.add_widget(self.camera)
         self._update_points_animation_ev = None
-        self.rect_width = 300
-        self.rect_height = 200
         p = []
         for point in self.points:
             p.append(list(point))
@@ -112,33 +110,44 @@ class DisplayScreen(Screen):
             else:
                 self.polygon = json.loads(content)
                 if f'{self.name}' in self.polygon:
+                    self.rect_width = 300 if 'size' not in self.polygon[f'{self.name}'] else self.polygon[f'{self.name}']['size'][0]
+                    self.rect_height = 200 if 'size' not in self.polygon[f'{self.name}'] else self.polygon[f'{self.name}']['size'][1]
                     for i in range(4):
                         self.points[i] = self.polygon[f'{self.name}']['polygon'][i]
         self.bind(size=self.update_line)
-        self.websocket_thread = threading.Thread(target=self.start_websocket_server, args=(port, ))
+        self.websocket_thread = threading.Thread(target=self.start_sending_data, args=(uri, ))
         self.websocket_thread.start()
-    async def send_data(self, websocket, path):
+
+    async def send_data_to_uri(self, uri):
         # 循环发送数据
         while True:
-            if self.ret_points is not None:
-                bias = self.polygon[f'{self.name}']['bias']
-                self.ret_points[:, 0] = self.ret_points[:, 0] + bias[0]
-                self.ret_points[:, 1] = self.ret_points[:, 1] + bias[1]
-                points = self.ret_points.tolist()
-            else:
-                points = [[]]
-            data_to_send = json.dumps({f'{self.name}':points}) if points else ""# 替换为你的数据生成逻辑
-            await websocket.send(data_to_send)
-            await asyncio.sleep(0.1)  # 可以设置发送频率
-    def start_websocket_server(self, port):
+            try:
+                async with websockets.connect(uri) as websocket:
+                    if self.ret_points is not None:
+                        bias = self.polygon[f'{self.name}']['bias']
+                        self.ret_points[:, 0] = self.ret_points[:, 0] + bias[0]
+                        self.ret_points[:, 1] = self.ret_points[:, 1] + bias[1]
+                        points = self.ret_points.tolist()
+                    else:
+                        points = [[]]
+                    data_to_send = json.dumps({f'{self.name}': points}) if points else ""
+                    await websocket.send(data_to_send)
+                    await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                print("Task was cancelled, restarting...")
+                continue
+            except Exception as e:
+                print(f"Error occurred: {e}")
+                continue
+
+    def start_sending_data(self, uri="ws://47.98.235.96:20030/webserver/python/1"):
         # 创建事件循环
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        # 启动WebSocket服务器
-        start_server = websockets.serve(self.send_data, "192.168.40.145", port)
-        loop.run_until_complete(start_server)
-        loop.run_forever()
+        # 开始发送数据
+        loop.run_until_complete(self.send_data_to_uri(uri))
+
     def update_line(self, instance, value):
         image_x, image_y, image_size = self.camera.update_line(instance, value)
     def change_screen(self, button):
@@ -149,12 +158,15 @@ class DisplayScreen(Screen):
             p.append(list(point))
         if f'{self.name}' in self.polygon:
             self.polygon[f'{self.name}']['polygon'] = p
+            self.rect_width = int(self.ids.rect_width.text) if self.ids.rect_width.text else self.polygon[f'{self.name}']['size'][0] if 'size' in self.polygon[f'{self.name}'] else 300
+            self.rect_height = int(self.ids.rect_height.text) if self.ids.rect_height.text else self.polygon[f'{self.name}']['size'][1] if 'size' in self.polygon[f'{self.name}'] else 200
+            self.polygon[f'{self.name}']['size'] = [self.rect_width, self.rect_height]
         else:
-            self.polygon[f'{self.name}'] = {'polygon': p, 'image_shape': [1440, 2560], 'origin': [0, 0], 'bias': [0, 0]}
+            self.polygon[f'{self.name}'] = {'polygon': p, 'image_shape': [1440, 2560], 'origin': [0, 0], 'bias': [0, 0], 'size': [300, 200]}
         with open("polygon.json", "w+") as f:
             json.dump(self.polygon, f, indent=4)
-        self.rect_width = int(self.ids.rect_width.text) if self.ids.rect_width.text else 300
-        self.rect_height = int(self.ids.rect_height.text) if self.ids.rect_height.text else 200
+        self.rect_width = self.polygon[f'{self.name}']['size'][0]
+        self.rect_height = self.polygon[f'{self.name}']['size'][1]
         image_shape = self.polygon[f'{self.name}']['image_shape']
         points = np.array(self.polygon[f'{self.name}']['polygon'])
         p_points = np.array([[56, 0], [56, 1377], [2504, 1377], [2504, 0]], dtype=np.float32)
@@ -249,14 +261,18 @@ class MyApp(App):
     def build(self):
         sm = ScreenManager()
         sm.add_widget(ControlScreen(name='control'))
-        sm.add_widget(DisplayScreen(name='display1', index='a9cbdf811a134adf9358c6e01713f8f5', port=8761))
-        # sm.add_widget(DisplayScreen(name='display2',
-        #                             rtmp='rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722839940&id=610119986496671744&t=b5adf3bf765359cc09fe4be5d6fc8233f59ecc70787fe92f577329ea9136aa9d&ev=100', port=8762))
-        sm.add_widget(DisplayScreen(name='display2',
-                                    index='000649a9fa9847a69348dc4b15f1532f',
-                                    port=8762))
-        sm.add_widget(DisplayScreen(name='display3',
-                                    index='80454c2b3c9a486c832d2c6edb2575da', port=8763))
+        # 北墙中东向西道路
+        sm.add_widget(
+            DisplayScreen(name='display1', rtsp="rtsp://admin:sysren12345@192.168.10.234:554/h264/ch1/main/av_stream",
+                          uri="ws://47.98.235.96:20030/webserver/python/1"))
+        # 门卫室西向东道路
+        sm.add_widget(
+            DisplayScreen(name='display2', rtsp="rtsp://admin:sysren12345@192.168.10.34:554/h264/ch1/main/av_stream",
+                          uri="ws://47.98.235.96:20030/webserver/python/2"))
+        # B楼楼顶广角监控
+        sm.add_widget(
+            DisplayScreen(name='display3', rtsp="rtsp://admin:sysren12345@192.168.10.232:554/h264/ch1/main/av_stream",
+                          uri="ws://47.98.235.96:20030/webserver/python/3"))
         return sm
 
 

@@ -1,12 +1,15 @@
 import json
+import random
 
 import cv2
 import requests
+import torch.cuda
 from kivy.app import App
 from kivy.graphics import Line, Color
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
+from torch import nn
 from ultralytics import YOLO
 
 
@@ -16,25 +19,16 @@ from src.myresults import MyResults
 # os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 #加载YOLOv8模型
 class KivyCamera(Image):
-    url = 'http://zns.china-yd.com:20001/monitor/getHKMonitorUrl'
-    headers = {
-        'Content-Type': 'application/json',
-        'Cookie': 'sessionId=d185b9ec-6a65-4651-af5a-43428e8f37f2',
-        'Accept': 'application/json',
-    }
-    data = {
-        "brokerId": 2,
-        "cameraIndexCode": "",
-        "protocol": "rtmp",
-        "streamType": 0,
-        "transmode": 1
-    }
-    def __init__(self, index="0", fps=30.0, name='firstWindow', **kwargs):
+    def __init__(self, rtsp="0", fps=30.0, name='firstWindow', **kwargs):
         super(KivyCamera, self).__init__(**kwargs)
-        self.data["cameraIndexCode"] = index
-        self.rtmp = self.getRTMP()
+        self.rtmp = rtsp
         self.capture = None
         self.model = YOLO('models/yolov8s-seg.pt')
+        if torch.cuda.device_count() > 1:
+            print("Using", torch.cuda.device_count(), "GPUs!")
+            self.model = nn.DataParallel(self.model)
+        torch.backends.cudnn.benchmark = True
+        self.model.to('cuda')
         self.name = name
         self.bind(norm_image_size=self.update_line, pos=self.update_line, size=self.update_line)
         with self.canvas.after:  # ensure the line is drawn above the image
@@ -43,11 +37,7 @@ class KivyCamera(Image):
         self.retries = 0 # 初始化重连尝试次数
         self.max_retries = 3 # 设置最大重连尝试次数
         # Clock.schedule_interval(self.update, 1.0 / fps)
-    def getRTMP(self):
-        response = requests.post(self.url, json=self.data, headers=self.headers)
-        res = json.loads(response.text)
-        res = json.loads(res['data'])
-        return res["url"]
+
     def update_line(self, instance, value):
         # compute the position and size of the image within the widget
         image_x = self.x + (instance.width - self.norm_image_size[0]) / 2
@@ -67,31 +57,42 @@ class KivyCamera(Image):
             print("连接中断，重新连接...")
             self.capture.release()
             self.retries += 1  # 增加尝试计数器
-            # if self.retries > self.max_retries:
-            #     print("超过最大尝试次数，停止重连。")
-            #     self.retries = 0  # 重置重连尝试计数，以便下一次可能的重连
-            #     self.updateRTMP()
-            #     return None, True  # 退出函数，不再尝试
             self.capture = cv2.VideoCapture(self.rtmp)
             return None, False
         else:
-            # Run YOLOv8 inference on the frame
-            results = self.model(frame)
+            if random.random() < 0.5:
+                # Run YOLOv8 inference on the frame
+                results = self.model(frame)
 
-            # # Visualize the results on the frame
-            # annotated_frame = results[0].plot()
-            my_results = MyResults(results[0], self.name)
-            # Visualize the results on the frame
-            annotated_frame, ret_points = my_results.plot(masks=False, rect_width=rect_width, rect_height=rect_height, image_shape=polygon[f"{self.name}"]['image_shape'], origin=polygon[f"{self.name}"]['origin'])
-            # OpenCV图像通常使用BGR颜色模式，但Kivy使用RGB模式，因此需要颜色转换
-            annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-            buf1 = cv2.flip(annotated_frame, 0)
-            buf = buf1.tostring()
-            image_texture = Texture.create(size=(annotated_frame.shape[1], annotated_frame.shape[0]), colorfmt='rgb')
-            image_texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
-            # 更新纹理
-            self.texture = image_texture
-            return ret_points, False
+                # # Visualize the results on the frame
+                # annotated_frame = results[0].plot()
+                my_results = MyResults(results[0], self.name)
+                # Visualize the results on the frame
+                annotated_frame, ret_points = my_results.plot(
+                    # masks=False,
+                                                              rect_width=rect_width,
+                                                              rect_height=rect_height,
+                                                              image_shape=polygon[f"{self.name}"]['image_shape'],
+                                                              origin=polygon[f"{self.name}"]['origin'])
+                # annotated_frame, ret_points = my_results.plot(rect_width=rect_width, rect_height=rect_height, image_shape=polygon[f"{self.name}"]['image_shape'], origin=polygon[f"{self.name}"]['origin'])
+                # OpenCV图像通常使用BGR颜色模式，但Kivy使用RGB模式，因此需要颜色转换
+                annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+                buf1 = cv2.flip(annotated_frame, 0)
+                buf = buf1.tostring()
+                image_texture = Texture.create(size=(annotated_frame.shape[1], annotated_frame.shape[0]),
+                                               colorfmt='rgb')
+                image_texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+                # 更新纹理
+                self.texture = image_texture
+                return ret_points, False
+            else:
+                buf1 = cv2.flip(frame, 0)
+                buf = buf1.tostring()
+                image_texture = Texture.create(size=(frame.shape[1], frame.shape[0]),
+                                               colorfmt='rgb')
+                image_texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+                return None, None
+
 
 class CamApp(App):
     def build(self):

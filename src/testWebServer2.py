@@ -1,11 +1,11 @@
 import asyncio
 import websockets
 
-async def echo(websocket, path):
-    async for message in websocket:
-        print(f"Received: {message}")
+async def send_message():
+    uri = "ws://47.98.235.96:20030/webserver/python/1"
+    async with websockets.connect(uri) as websocket:
+        await websocket.send("Hello, World!")
+        response = await websocket.recv()
+        print(f"Received: {response}")
 
-start_server = websockets.serve(echo, "localhost", 8761)
-
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+asyncio.get_event_loop().run_until_complete(send_message())

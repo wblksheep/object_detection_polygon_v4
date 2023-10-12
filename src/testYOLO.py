@@ -1,16 +1,12 @@
 import cv2
 from ultralytics import YOLO
-import os
 
-os.environ['http_proxy'] = 'http://127.0.0.1:7890'
-os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 # Load the YOLOv8 model
-model = YOLO('models/yolov8s.pt')
+model = YOLO('yolov8n.pt')
 
 # Open the video file
-# video_path = 0
-video_path = "rtmp://rtmp01open.ys7.com:1935/v3/openlive/K03667893_1_1?expire=1722081714&id=606939758247530496&t=53c53c7f999bf9f19183ec9c9dd1fa8d76d6891d7a35fd4ccb8fdf9b2c220067&ev=100"
-cap = cv2.VideoCapture(video_path)
+rtsp_url = "rtsp://admin:sysren12345@192.168.10.234:554/h264/ch1/main/av_stream"
+cap = cv2.VideoCapture(rtsp_url)
 
 # Loop through the video frames
 while cap.isOpened():
@@ -25,7 +21,10 @@ while cap.isOpened():
         annotated_frame = results[0].plot()
 
         # Display the annotated frame
-        cv2.imshow("YOLOv8 Inference", annotated_frame)
+        cv2.imshow("YOLOv8 Inference1", annotated_frame)
+
+        # # Display the annotated frame
+        # cv2.imshow("YOLOv8 Inference1", frame)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):
