@@ -3,3 +3,5 @@ src/models/
 src/*.jpeg
 src/*.jpg
 src/*.png
+src/*.mp4
+src/*.pt
